@@ -14,14 +14,26 @@ class HTMLNode:
     def props_to_html(self):
         props_string = ""
         if self.props and len(self.props.keys()) > 0:
-            props_string += " "
             for key, value in self.props.items():
                 if value is None:
                     continue
                 props_string += f"{key}='{value}' "
-            props_string = props_string.strip()
+            props_string = props_string.rstrip()
 
-        return props_string
+        return props_string if len(props_string) == 0 else f" {props_string}"
 
     def __repr__(self) -> str:
         return f'HTMLNode({self.tag}, {self.value}, {self.children}, {self.props})'
+
+class LeafNode(HTMLNode):
+    def __init__(self, tag: str, value: str, props: Optional[Dict[str, str]] = None):
+        super().__init__(tag=tag, value=value, children=None, props=props)
+
+    def to_html(self):
+        if not self.value:
+            raise ValueError("LeafNode must have a value")
+
+        if not self.tag:
+            return self.value
+
+        return f"<{self.tag}{self.props_to_html()}>{self.value}</{self.tag}>"
