@@ -73,9 +73,9 @@ class MarkdownParserSplitNodesTestCase(unittest.TestCase):
     # Mixed but non-nested delimiters
 
     def test_mixed_delimiters_not_nested(self):
-        node = TextNode("This is *italic* and **bold**", TextType.TEXT)
+        node = TextNode("This is _italic_ and **bold**", TextType.TEXT)
 
-        result = self.parser.split_nodes([node], "*", TextType.ITALIC)
+        result = self.parser.split_nodes([node], "_", TextType.ITALIC)
         result = self.parser.split_nodes(result, "**", TextType.BOLD)
 
         self.assertEqual(result, [
@@ -306,3 +306,125 @@ class MarkdownParserSplitNodesTestCase(unittest.TestCase):
             TextNode(" end", TextType.TEXT),
         ])
 
+    # -----------------------------
+    # Plain text
+    # -----------------------------
+    def test_plain_text_full(self):
+        text = "Just plain text"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("Just plain text", TextType.TEXT)
+        ])
+
+    # -----------------------------
+    # Italic text
+    # -----------------------------
+    def test_italic_text_full(self):
+        text = "This is _italic_ text"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("This is ", TextType.TEXT),
+            TextNode("italic", TextType.ITALIC),
+            TextNode(" text", TextType.TEXT)
+        ])
+
+    # -----------------------------
+    # Bold text
+    # -----------------------------
+    def test_bold_text_full(self):
+        text = "This is **bold** text"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("This is ", TextType.TEXT),
+            TextNode("bold", TextType.BOLD),
+            TextNode(" text", TextType.TEXT)
+        ])
+
+    # -----------------------------
+    # Code span
+    # -----------------------------
+    def test_code_text_full(self):
+        text = "Code: `print('hi')` end"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("Code: ", TextType.TEXT),
+            TextNode("print('hi')", TextType.CODE),
+            TextNode(" end", TextType.TEXT)
+        ])
+
+    # -----------------------------
+    # Link
+    # -----------------------------
+    def test_single_link_full(self):
+        text = "Visit [example](https://example.com)"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("Visit ", TextType.TEXT),
+            TextNode("example", TextType.LINK, url="https://example.com")
+        ])
+
+    def test_multiple_links_full(self):
+        text = "Links: [one](https://one.com) and [two](https://two.com)"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("Links: ", TextType.TEXT),
+            TextNode("one", TextType.LINK, url="https://one.com"),
+            TextNode(" and ", TextType.TEXT),
+            TextNode("two", TextType.LINK, url="https://two.com"),
+        ])
+
+    # -----------------------------
+    # Images
+    # -----------------------------
+    def test_single_image_full(self):
+        text = "Image: ![alt](https://example.com/image.png)"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("Image: ", TextType.TEXT),
+            TextNode("alt", TextType.IMAGE, url="https://example.com/image.png")
+        ])
+
+    def test_multiple_images_full(self):
+        text = "![one](one.png) and ![two](two.png)"
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [
+            TextNode("one", TextType.IMAGE, url="one.png"),
+            TextNode(" and ", TextType.TEXT),
+            TextNode("two", TextType.IMAGE, url="two.png"),
+        ])
+
+    # -----------------------------
+    # Mixed markdown
+    # -----------------------------
+    def test_mixed_markdown_full(self):
+        text = "Start _italic_ **bold** `code` [link](url) ![img](img.png) end"
+        result = self.parser.text_to_textnodes(text)
+        
+        # print("Result", result)
+
+        self.assertEqual(result, [
+            TextNode("Start ", TextType.TEXT),
+            TextNode("italic", TextType.ITALIC),
+            TextNode(" ", TextType.TEXT),
+            TextNode("bold", TextType.BOLD),
+            TextNode(" ", TextType.TEXT),
+            TextNode("code", TextType.CODE),
+            TextNode(" ", TextType.TEXT),
+            TextNode("link", TextType.LINK, url="url"),
+            TextNode(" ", TextType.TEXT),
+            TextNode("img", TextType.IMAGE, url="img.png"),
+            TextNode(" end", TextType.TEXT)
+        ])
+
+    # -----------------------------
+    # Edge cases
+    # -----------------------------
+    def test_unbalanced_markdown_raises_full(self):
+        text = "This is _broken and **bold"
+        with self.assertRaises(Exception):
+            self.parser.text_to_textnodes(text)
+
+    def test_empty_string_full(self):
+        text = ""
+        result = self.parser.text_to_textnodes(text)
+        self.assertEqual(result, [TextNode("", TextType.TEXT)])

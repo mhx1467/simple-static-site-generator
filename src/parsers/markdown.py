@@ -1,19 +1,39 @@
 import re
 from src.textnode import TextNode, TextType
-from typing import Callable, List, Text, Tuple
+from typing import Callable, Dict, List,Tuple
 
 class MarkdownParser:
+    def text_to_textnodes(self, text: str) -> List[TextNode]:
+        nodes = [TextNode(text, TextType.TEXT)]
+        
+        nodes = self.split_nodes_image(nodes)
+        nodes = self.split_nodes_link(nodes)
+
+        text_type_to_delimiter: Dict[TextType, str] = {
+            TextType.BOLD: "**",
+            TextType.ITALIC: "_",
+            TextType.CODE: "`",
+        }
+
+        for text_type, delimiter in text_type_to_delimiter.items():
+            nodes = self.split_nodes(nodes, delimiter, text_type)
+
+        return nodes
+
     def split_nodes(self, old_nodes: List[TextNode], delimiter: str, text_type: TextType) -> List[TextNode]:
         new_nodes = []
         pattern = self.__get_split_pattern(delimiter)
 
         for node in old_nodes:
-            if node.text_type != TextType.TEXT or len(node.text) == 0:
+
+            if node.text_type != TextType.TEXT or len(node.text.strip()) == 0:
                 new_nodes.append(node)
                 continue
 
             parts = re.split(pattern, node.text)
-        
+            if node.text == " ":
+                print(parts)
+
             start = 0
             for i, part in enumerate(parts):
                 end = start + len(part)
@@ -47,7 +67,7 @@ class MarkdownParser:
         new_nodes = []
 
         for node in old_nodes:
-            if node.text_type != TextType.TEXT or len(node.text) == 0:
+            if node.text_type != TextType.TEXT or len(node.text.strip()) == 0:
                 new_nodes.append(node)
                 continue
 
@@ -72,10 +92,10 @@ class MarkdownParser:
                     new_nodes.append(TextNode(text=normal_text, text_type=node.text_type))
 
                 new_nodes.append(TextNode(text=links[i][0], text_type=text_type, url=links[i][1])) 
-                start = min(match[1] + 1, len(node.text) - 1)
+                start = min(match[1] + 1, len(node.text))
 
 
-            if start < len(node.text) - 1:
+            if start < len(node.text):
                 new_nodes.append(TextNode(text=node.text[max(0, start):], text_type=TextType.TEXT))
 
         return new_nodes
@@ -98,6 +118,8 @@ class MarkdownParser:
         # {d} - matches exactly one instance of the delimiter
         # (?!{d}) - negative lookahead: ensures the delimiter is NOT followed by another delimiter
         # Result: matches a single, standalone delimiter and ignores runs like '**' or '***'
+
+        # TODO: Improve on contigous sections such as "_one__two_ **a****b**"
         return rf'(?<!{d}){d}(?!{d})'
 
     def __get_image_pattern(self) -> str:
