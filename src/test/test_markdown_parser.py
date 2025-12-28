@@ -104,3 +104,205 @@ class MarkdownParserSplitNodesTestCase(unittest.TestCase):
         result = self.parser.split_nodes([node], "*", TextType.ITALIC)
 
         self.assertEqual(result, [node])
+
+   # Image extraction
+
+    def test_single_image(self):
+        text = "Here is an image ![alt text](https://example.com/image.png)"
+        result = self.parser.extract_markdown_images(text)
+
+        self.assertEqual(result, [
+            ("alt text", "https://example.com/image.png")
+        ])
+
+    def test_multiple_images(self):
+        text = (
+            "First ![one](https://example.com/one.png) "
+            "and second ![two](https://example.com/two.png)"
+        )
+        result = self.parser.extract_markdown_images(text)
+
+        self.assertEqual(result, [
+            ("one", "https://example.com/one.png"),
+            ("two", "https://example.com/two.png"),
+        ])
+
+    def test_no_images(self):
+        text = "There are no images here"
+        result = self.parser.extract_markdown_images(text)
+
+        self.assertEqual(result, [])
+
+    def test_image_like_text_but_invalid(self):
+        text = "This looks like ![alt text](missing end"
+        result = self.parser.extract_markdown_images(text)
+
+        self.assertEqual(result, [])
+
+    # Link extraction
+
+    def test_single_link(self):
+        text = "Visit [example](https://example.com)"
+        result = self.parser.extract_markdown_links(text)
+
+        self.assertEqual(result, [
+            ("example", "https://example.com")
+        ])
+
+    def test_multiple_links(self):
+        text = (
+            "Links: [one](https://one.com) "
+            "and [two](https://two.com)"
+        )
+        result = self.parser.extract_markdown_links(text)
+
+        self.assertEqual(result, [
+            ("one", "https://one.com"),
+            ("two", "https://two.com"),
+        ])
+
+    def test_no_links(self):
+        text = "Plain text with no links"
+        result = self.parser.extract_markdown_links(text)
+
+        self.assertEqual(result, [])
+
+    def test_image_not_treated_as_link(self):
+        text = "This is an image ![alt](https://example.com/image.png)"
+        result = self.parser.extract_markdown_links(text)
+
+        self.assertEqual(result, [])
+
+
+    def test_single_link_node(self):
+        node = TextNode("Visit [example](https://example.com)", TextType.TEXT)
+        result = self.parser.split_nodes_link([node])
+
+        self.assertEqual(result, [
+            TextNode("Visit ", TextType.TEXT),
+            TextNode("example", TextType.LINK, url="https://example.com")
+        ])
+
+    def test_multiple_links_in_node(self):
+        node = TextNode("Links: [one](https://one.com) and [two](https://two.com)", TextType.TEXT)
+        result = self.parser.split_nodes_link([node])
+
+        self.assertEqual(result, [
+            TextNode("Links: ", TextType.TEXT),
+            TextNode("one", TextType.LINK, url="https://one.com"),
+            TextNode(" and ", TextType.TEXT),
+            TextNode("two", TextType.LINK, url="https://two.com"),
+        ])
+
+    def test_sequential_links_in_node(self):
+        node = TextNode("[a](a.com)[b](b.com)", TextType.TEXT)
+        result = self.parser.split_nodes_link([node])
+
+        self.assertEqual(result, [
+            TextNode("a", TextType.LINK, url="a.com"),
+            TextNode("b", TextType.LINK, url="b.com"),
+        ])
+
+    def test_links_and_text_mixed_nodes(self):
+        node = TextNode("Before [link](url) after", TextType.TEXT)
+        result = self.parser.split_nodes_link([node])
+
+        self.assertEqual(result, [
+            TextNode("Before ", TextType.TEXT),
+            TextNode("link", TextType.LINK, url="url"),
+            TextNode(" after", TextType.TEXT),
+        ])
+
+    def test_no_links_in_node(self):
+        node = TextNode("Plain text only", TextType.TEXT)
+        result = self.parser.split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_invalid_link_in_node(self):
+        node = TextNode("Broken [link](missing end", TextType.TEXT)
+        result = self.parser.split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_link_node_already_link(self):
+        node = TextNode("link", TextType.LINK, url="url")
+        result = self.parser.split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_empty_text_node(self):
+        node = TextNode("", TextType.TEXT)
+        result = self.parser.split_nodes_link([node])
+        self.assertEqual(result, [node])
+
+    def test_single_image_node(self):
+        node = TextNode("Here is an image ![alt](url)", TextType.TEXT)
+        result = self.parser.split_nodes_image([node])
+
+        self.assertEqual(result, [
+            TextNode("Here is an image ", TextType.TEXT),
+            TextNode("alt", TextType.IMAGE, url="url")
+        ])
+
+    def test_multiple_images_in_node(self):
+        node = TextNode("![one](one.png) text ![two](two.png)", TextType.TEXT)
+        result = self.parser.split_nodes_image([node])
+
+        self.assertEqual(result, [
+            TextNode("one", TextType.IMAGE, url="one.png"),
+            TextNode(" text ", TextType.TEXT),
+            TextNode("two", TextType.IMAGE, url="two.png"),
+        ])
+
+    def test_sequential_images_node(self):
+        node = TextNode("![a](a.png)![b](b.png)", TextType.TEXT)
+        result = self.parser.split_nodes_image([node])
+
+        self.assertEqual(result, [
+            TextNode("a", TextType.IMAGE, url="a.png"),
+            TextNode("b", TextType.IMAGE, url="b.png"),
+        ])
+
+    def test_images_and_text_mixed_node(self):
+        node = TextNode("Text before ![img](url) after", TextType.TEXT)
+        result = self.parser.split_nodes_image([node])
+
+        self.assertEqual(result, [
+            TextNode("Text before ", TextType.TEXT),
+            TextNode("img", TextType.IMAGE, url="url"),
+            TextNode(" after", TextType.TEXT),
+        ])
+
+    def test_no_images_in_node(self):
+        node = TextNode("Plain text", TextType.TEXT)
+        result = self.parser.split_nodes_image([node])
+        self.assertEqual(result, [node])
+
+    def test_invalid_image_node(self):
+        node = TextNode("Broken ![alt](missing end", TextType.TEXT)
+        result = self.parser.split_nodes_image([node])
+        self.assertEqual(result, [node])
+
+    def test_image_node_already_image(self):
+        node = TextNode("img", TextType.IMAGE, url="url")
+        result = self.parser.split_nodes_image([node])
+        self.assertEqual(result, [node])
+
+    def test_empty_text_node_image(self):
+        node = TextNode("", TextType.TEXT)
+        result = self.parser.split_nodes_image([node])
+        self.assertEqual(result, [node])
+
+    def test_node_with_link_and_image(self):
+        node = TextNode("Start ![img](img.png) middle [link](url) end", TextType.TEXT)
+        # First extract images
+        result = self.parser.split_nodes_image([node])
+        # Then extract links
+        result = self.parser.split_nodes_link(result)
+
+        self.assertEqual(result, [
+            TextNode("Start ", TextType.TEXT),
+            TextNode("img", TextType.IMAGE, url="img.png"),
+            TextNode(" middle ", TextType.TEXT),
+            TextNode("link", TextType.LINK, url="url"),
+            TextNode(" end", TextType.TEXT),
+        ])
+
