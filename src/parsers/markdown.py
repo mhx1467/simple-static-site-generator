@@ -1,7 +1,8 @@
 import re
 from enum import Enum
-from src.textnode import TextNode, TextType
-from typing import Callable, Dict, List,Tuple
+from src.htmlnode import HTMLNode, ParentNode, LeafNode
+from src.textnode import TextNode, TextType, text_node_to_html_node
+from typing import Callable, Dict, List, Tuple
 
 class BlockType(Enum):
     PARAGRAPH = 'paragraph',
@@ -127,7 +128,7 @@ class MarkdownParser:
 
         return new_nodes
 
-    def block_to_block_type(self, block: str) -> BlockType:
+    def block_to_block_type(self, block: str) -> BlockType | None:
         regex_to_block_type: Dict[str, BlockType] = {
             r"^#{1,6}\s": BlockType.HEADING,
             r"^```": BlockType.CODE,
@@ -142,7 +143,69 @@ class MarkdownParser:
             if re.match(regex, first_line):
                 return block_type
 
-        raise ValueError("Unknown block encountered")
+        return None
+
+    def markdown_to_html_code(self, markdown: str) -> HTMLNode:
+        html_nodes = []
+        markdown_blocks = self.markdown_to_blocks(markdown)
+
+        for markdown_block in markdown_blocks:
+            block_type = self.block_to_block_type(markdown_block)
+            if block_type is None:
+                continue
+
+            match block_type:
+
+                case BlockType.PARAGRAPH:
+                    text_nodes = self.text_to_textnodes(markdown_block)
+                    children = list(map(lambda text_node: text_node_to_html_node(text_node), text_nodes))
+                    html_nodes.append(ParentNode(tag="p", children=children))
+
+                case BlockType.HEADING:
+                    match = re.match(r"^(#{1,6})\s+(.*)", markdown_block)
+                    if not match:
+                        continue
+
+                    level = len(match.group(1))
+                    content = match.group(2).strip()
+                    text_nodes = self.text_to_textnodes(content)
+                    children = list(map(lambda text_node: text_node_to_html_node(text_node), text_nodes))
+                    html_nodes.append(ParentNode(tag=f"h{level}", children=children))
+
+                case BlockType.CODE:
+                    code = markdown_block.strip()
+                    code = re.sub(r"^```|```$", "", code, flags=re.MULTILINE).strip()
+                    html_nodes.append(ParentNode(tag="pre", children=[LeafNode(tag="code", value=code)]))
+
+                case BlockType.QUOTE:
+                    lines = markdown_block.splitlines()
+                    cleaned = [re.sub(r"^>\s?", "", line) for line in lines]
+                    content = "\n".join(cleaned).strip()
+                    text_nodes = self.text_to_textnodes(content)
+                    children = list(map(lambda text_node: text_node_to_html_node(text_node), text_nodes))
+                    html_nodes.append(ParentNode(tag="blockquote", children=children))
+
+                case BlockType.UNORDERED_LIST:
+                    items = markdown_block.splitlines()
+                    li_nodes = []
+                    for item in items:
+                        content = re.sub(r"^[*-]\s+", "", item).strip()
+                        text_nodes = self.text_to_textnodes(content)
+                        children = list(map(lambda text_node: text_node_to_html_node(text_node), text_nodes))
+                        li_nodes.append(ParentNode(tag="li", children=children))
+                    html_nodes.append(ParentNode(tag="ul", children=li_nodes))
+
+                case BlockType.ORDERED_LIST:
+                    items = markdown_block.splitlines()
+                    li_nodes = []
+                    for item in items:
+                        content = re.sub(r"^\d+\.\s+", "", item).strip()
+                        text_nodes = self.text_to_textnodes(content)
+                        children = list(map(lambda text_node: text_node_to_html_node(text_node), text_nodes))
+                        li_nodes.append(ParentNode(tag="li", children=children))
+                    html_nodes.append(ParentNode(tag="ol", children=li_nodes))
+
+        return ParentNode(tag='div', children=html_nodes)
 
     def __get_split_pattern(self, delimiter: str) -> str:
         d = re.escape(delimiter)

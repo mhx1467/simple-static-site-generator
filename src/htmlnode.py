@@ -1,5 +1,15 @@
 from __future__ import annotations
 from typing import List, Dict, Optional
+from enum import Enum
+
+class HTMLTag(Enum):
+    PARAGRAPH = 'p',
+    HEADING = 'h'
+    BLOCKQUOTE = 'blockquote'
+    UNORDERED_LIST = 'ul'
+    ORDERED_LIST = 'ol'
+    LIST_ITEM = 'li'
+    CODE = 'code'
 
 class HTMLNode:
     def __init__(self, tag: Optional[str] = None, value: Optional[str] = None, children: Optional[List[HTMLNode]] = None, props: Optional[Dict[str, str]] = None):
