@@ -1,6 +1,15 @@
 import re
+from enum import Enum
 from src.textnode import TextNode, TextType
 from typing import Callable, Dict, List,Tuple
+
+class BlockType(Enum):
+    PARAGRAPH = 'paragraph',
+    HEADING = 'heading'
+    CODE = 'code'
+    QUOTE = 'quote'
+    UNORDERED_LIST = 'unordered_list'
+    ORDERED_LIST = 'ordered_list'
 
 class MarkdownParser:
     def text_to_textnodes(self, text: str) -> List[TextNode]:
@@ -117,6 +126,23 @@ class MarkdownParser:
                 new_nodes.append(TextNode(text=node.text[max(0, start):], text_type=TextType.TEXT))
 
         return new_nodes
+
+    def block_to_block_type(self, block: str) -> BlockType:
+        regex_to_block_type: Dict[str, BlockType] = {
+            r"^#{1,6}\s": BlockType.HEADING,
+            r"^```": BlockType.CODE,
+            r"^>": BlockType.QUOTE,
+            r"^\d+\.\s": BlockType.ORDERED_LIST,
+            r"^[-*+]\s": BlockType.UNORDERED_LIST,
+            r".*": BlockType.PARAGRAPH,
+        }
+
+        first_line = block.split("\n", 1)[0]
+        for regex, block_type in regex_to_block_type.items():
+            if re.match(regex, first_line):
+                return block_type
+
+        raise ValueError("Unknown block encountered")
 
     def __get_split_pattern(self, delimiter: str) -> str:
         d = re.escape(delimiter)

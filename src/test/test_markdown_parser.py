@@ -1,7 +1,6 @@
 import unittest
-from src.parsers.markdown import MarkdownParser
+from src.parsers.markdown import MarkdownParser, BlockType
 from src.textnode import TextNode, TextType
-
 
 class MarkdownParserSplitNodesTestCase(unittest.TestCase):
 
@@ -450,3 +449,17 @@ class MarkdownParserSplitNodesTestCase(unittest.TestCase):
                 "- This is a list\n- with items",
             ],
         )
+
+    def test_block_to_block_types(self):
+        block = "# heading"
+        self.assertEqual(self.parser.block_to_block_type(block), BlockType.HEADING)
+        block = "```\ncode\n```"
+        self.assertEqual(self.parser.block_to_block_type(block), BlockType.CODE)
+        block = "> quote\n> more quote"
+        self.assertEqual(self.parser.block_to_block_type(block), BlockType.QUOTE)
+        block = "- list\n- items"
+        self.assertEqual(self.parser.block_to_block_type(block), BlockType.UNORDERED_LIST)
+        block = "1. list\n2. items"
+        self.assertEqual(self.parser.block_to_block_type(block), BlockType.ORDERED_LIST)
+        block = "paragraph"
+        self.assertEqual(self.parser.block_to_block_type(block), BlockType.PARAGRAPH)
