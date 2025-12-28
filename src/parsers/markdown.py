@@ -63,6 +63,24 @@ class MarkdownParser:
     def split_nodes_link(self, old_nodes: List[TextNode]) -> List[TextNode]:
         return self.__split_link_based_nodes(old_nodes, self.extract_markdown_links, self.__get_link_pattern(), TextType.LINK)
 
+    def extract_markdown_images(self, text: str) -> List[Tuple[str, str]]:
+        pattern = self.__get_image_pattern()
+        matches = re.findall(pattern, text)
+
+        return matches
+
+    def extract_markdown_links(self, text: str) -> List[Tuple[str, str]]:
+        pattern = self.__get_link_pattern()
+        matches = re.findall(pattern, text)
+
+        return matches
+
+    def markdown_to_blocks(self, markdown: str) -> List[str]:
+        # TODO: For now, only care about simple and valid markdown.
+        blocks = markdown.split("\n\n")
+
+        return list(filter(lambda block: len(block) > 0, map(lambda block: block.strip(), blocks)))
+
     def __split_link_based_nodes(self, old_nodes: List[TextNode], get_links_callback: Callable, pattern: str, text_type: TextType) -> List[TextNode]:
         new_nodes = []
 
@@ -99,18 +117,6 @@ class MarkdownParser:
                 new_nodes.append(TextNode(text=node.text[max(0, start):], text_type=TextType.TEXT))
 
         return new_nodes
-
-    def extract_markdown_images(self, text: str) -> List[Tuple[str, str]]:
-        pattern = self.__get_image_pattern()
-        matches = re.findall(pattern, text)
-
-        return matches
-
-    def extract_markdown_links(self, text: str) -> List[Tuple[str, str]]:
-        pattern = self.__get_link_pattern()
-        matches = re.findall(pattern, text)
-
-        return matches
 
     def __get_split_pattern(self, delimiter: str) -> str:
         d = re.escape(delimiter)
