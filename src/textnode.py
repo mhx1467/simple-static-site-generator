@@ -38,6 +38,6 @@ def text_node_to_html_node(text_node: TextNode) -> HTMLNode:
         case TextType.IMAGE:
             if text_node.url is None:
                 raise ValueError(f"{text_node.__class__} of type image must have url string")
-            return LeafNode(tag="img", value="", props={"href": text_node.url, "alt": text_node.text})
+            return LeafNode(tag="img", value="", props={"src": text_node.url, "alt": text_node.text})
         case _:
             raise ValueError(f"Unknown {text_node.__class__} text type value")
